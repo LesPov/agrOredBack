@@ -1,0 +1,5 @@
+/.env
+/.wwebjs_cache
+/distjs
+/node_modules
+/.wwebjs_sessions
