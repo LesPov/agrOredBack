@@ -12,7 +12,7 @@ import AuthService from '../features/auth/services/auth.service';
 import ProfileServer from '../features/profiles/service/profileServer';
 import AdminServer from '../features/admin/service/adminServer';
 import updateStatusRouter from '../features/auth/routes/updateStatusRouter';
- import CampiAmigoService from '../features/campiamigo/service/campiamigo.service';
+import CampiAmigoService from '../features/campiamigo/service/campiamigo.service';
 import UserService from '../features/users/service/user.service';
 
 dotenv.config();
@@ -29,12 +29,12 @@ class Server {
   constructor() {
     this.app = express();
     this.port = process.env.PORT || '3001';
- // Inicialización de servicios
- this.authService = new AuthService();
- this.profileServer = new ProfileServer();
- this.adminServer = new AdminServer();
- this.userService = new UserService();
- this.campiAmigoService = new CampiAmigoService();
+    // Inicialización de servicios
+    this.authService = new AuthService();
+    this.profileServer = new ProfileServer();
+    this.adminServer = new AdminServer();
+    this.userService = new UserService();
+    this.campiAmigoService = new CampiAmigoService();
     // 1. Compresión general de respuestas
     this.app.use(compression());
 
@@ -54,35 +54,30 @@ class Server {
   /** Configura CORS de forma centralizada con soporte de comodines en dev */
   private configureCors(): void {
     const raw = process.env.ALLOWED_ORIGINS || '';
-    const allowed = raw.split(',').map(o => o.trim()).filter(Boolean);
+    const allowed = raw.split(',').map(o => o.trim());
+
 
     const corsOptions: CorsOptions = {
       origin: (origin, callback) => {
-        // Permitir sin origen (p.ej. herramientas CLI o plugins de VS Code)
         if (!origin) return callback(null, true);
-
-        // Match exacto o wildcard (*) en dev
         const match = allowed.some(pattern => {
           if (pattern === '*') return true;
-          // Convertir a regex si tiene comodín
           if (pattern.includes('*')) {
             const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
             return regex.test(origin);
           }
           return origin === pattern;
         });
-
-        if (match) {
-          return callback(null, true);
-        }
+        if (match) return callback(null, true);
         console.warn(`[CORS] Origen no permitido: ${origin}`);
         callback(new Error('No permitido por CORS'));
       },
       credentials: true,
-      methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-      allowedHeaders: ['Content-Type','Authorization'],
-      optionsSuccessStatus: 200,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      optionsSuccessStatus: 200
     };
+    
 
     this.app.use(cors(corsOptions));
   }
@@ -98,7 +93,7 @@ class Server {
     this.app.use(
       '/uploads',
       express.static(uploadsPath, {
-         etag: true,
+        etag: true,
       })
     );
   }
