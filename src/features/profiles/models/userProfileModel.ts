@@ -1,11 +1,11 @@
 // models/userProfileModel.ts
 import { DataTypes } from "sequelize";
- 
+
 import { UserProfileinterface } from "../interfaces/userProfileInterface";
 import sequelize from "../../../infrastructure/database/connection";
 import { AuthModel } from "../../auth/models/authModel";
 import { ZoneModel } from "../../zones/models/zoneModel";
- 
+
 export const userProfileModel = sequelize.define<UserProfileinterface>('userProfile', {
   id: {
     type: DataTypes.INTEGER,
@@ -14,7 +14,7 @@ export const userProfileModel = sequelize.define<UserProfileinterface>('userProf
   },
   userId: {
     type: DataTypes.INTEGER,
-    allowNull: false, 
+    allowNull: false,
     unique: true,
     references: {
       model: 'auth',
@@ -25,7 +25,7 @@ export const userProfileModel = sequelize.define<UserProfileinterface>('userProf
     type: DataTypes.STRING,
     allowNull: true,
   },
-  firstName: { 
+  firstName: {
     type: DataTypes.STRING,
     allowNull: false,
   },

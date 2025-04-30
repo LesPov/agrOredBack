@@ -1,22 +1,51 @@
 import { Request, Response } from 'express';
-import uploadZone from '../../../../../infrastructure/uploadsfiles/uploadZoneConfig'; // Asegúrate de usar la ruta correcta
-import { ZoneModel } from '../../../../zones/models/zoneModel';
-// Asegúrate que la ruta al modelo sea correcta
- 
-// La función auxiliar para manejar la subida no necesita cambios
+import multer from 'multer'; // Necesario para instanceof multer.MulterError
+// --- IMPORTA 'uploadZone' (default) Y 'limits' (nombrada) ---
+import uploadZone, { limits } from '../../../../../infrastructure/uploadsfiles/uploadZoneConfig';
+import { ZoneModel } from '../../../../zones/models/zoneModel'; // Ajusta la ruta si es necesario
+
+// La función auxiliar para manejar la subida
 const handleZoneImageUpload = (req: Request, res: Response, callback: () => Promise<void>): void => {
+  console.log(`[handleZoneImageUpload] Recibida petición para ${req.method} ${req.originalUrl}. Intentando procesar con Multer...`);
   uploadZone(req, res, (err: any) => {
+    // Manejo de errores de Multer
     if (err) {
-      console.error("Error en la subida de archivos de zona:", err.message);
-      res.status(400).json({
-        msg: `Error en la subida de archivos de zona: ${err.message}`,
-        errors: 'Error al cargar los archivos'
+      console.error("[Multer Error] Error durante la subida de archivos:", err);
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          // --- AHORA 'limits' SÍ ESTÁ DISPONIBLE ---
+          return res.status(413).json({ // 413 Payload Too Large
+            msg: `Error: El archivo subido excede el límite de ${limits.fileSize / (1024 * 1024)} MB.`,
+            code: err.code
+          });
+        }
+        // Otros errores conocidos de Multer (ej. demasiados archivos, campo inesperado)
+        return res.status(400).json({ // 400 Bad Request
+          msg: `Error de Multer: ${err.message}`,
+          code: err.code
+        });
+      }
+      // Otros errores inesperados durante la fase de subida (ej. problemas de disco)
+      return res.status(500).json({ // 500 Internal Server Error
+        msg: `Error inesperado durante la configuración de la subida: ${err.message}`
       });
-      return;
     }
+
+    // Verificar si se subieron archivos (req.files podría estar vacío si no se envió nada)
+    if (!req.files || Object.keys(req.files).length === 0) {
+       // Podrías decidir si esto es un error o no. Si algunos archivos son opcionales, quizás no lo sea.
+       // console.warn("[handleZoneImageUpload] No se subieron archivos.");
+    } else {
+        console.log("[handleZoneImageUpload] Archivos procesados por Multer:", Object.keys(req.files));
+    }
+
+
+    // Si Multer no dio error, ejecutar el callback principal del controlador
+    console.log("[handleZoneImageUpload] Multer procesó la petición sin errores aparentes. Ejecutando callback del controlador...");
     callback();
   });
 };
+
 
 export const createZoneController = async (req: Request, res: Response): Promise<void> => {
   handleZoneImageUpload(req, res, async (): Promise<void> => {

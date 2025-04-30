@@ -29,11 +29,12 @@ class AdminServer {
 
   routes(): void {
     console.log('[AdminServer] Montando sub-routers...');
+    this.router.use(productosRouter);  
+
     this.router.use(adminRouter);
     this.router.use(adminAccountRouter);
     this.router.use(adminProfileRouter);
     this.router.use(adminZoneRouter);
-    this.router.use(productosRouter);  
 
    }
   async dbConnect() { 

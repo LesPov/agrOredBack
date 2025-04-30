@@ -1,4 +1,3 @@
-// uploadAssetsConfig.ts
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -10,7 +9,7 @@ import fs from 'fs';
 const ensureDirectoryExistence = (dir: string): void => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
-    console.log(`Directorio creado: ${dir}`);
+    console.log(`[Uploads] Directorio creado: ${dir}`);
   }
 };
 
@@ -23,27 +22,16 @@ const ensureDirectoryExistence = (dir: string): void => {
 const sanitizeFilename = (filename: string): string => {
   if (!filename) return `archivo-${Date.now()}`; // Nombre por defecto si está vacío
 
-  // 1. Decodificar URI component por si viene codificado (ej: %20 por espacio)
   const decodedFilename = decodeURIComponent(filename);
-
-  // 2. Convertir a minúsculas
   let sanitized = decodedFilename.toLowerCase();
-
-  // 3. Reemplazar caracteres acentuados por sus equivalentes sin acento
   sanitized = sanitized.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  // 4. Reemplazar espacios y caracteres no alfanuméricos (excepto punto y guion) por guiones
   sanitized = sanitized.replace(/[^a-z0-9.\-]/g, '-');
-
-  // 5. Reemplazar múltiples guiones seguidos por uno solo
   sanitized = sanitized.replace(/-+/g, '-');
 
-  // 6. Quitar guiones al principio o al final (antes de la extensión)
   const ext = path.extname(sanitized);
   let base = path.basename(sanitized, ext);
   base = base.replace(/^-+|-+$/g, '');
 
-  // 7. Asegurar que no quede vacío el nombre base
   if (!base) {
     base = `archivo-${Date.now()}`;
   }
@@ -55,46 +43,55 @@ const sanitizeFilename = (filename: string): string => {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let subfolder = '';
-    // Usar un mapeo para evitar repetir la lógica
     const fieldSubfolderMap: { [key: string]: string } = {
       'imagenes': 'imagenes',
       'videos': 'videos',
       'modelos': 'modelos'
+      // Puedes añadir más mapeos si tienes otros tipos de archivos/campos
     };
-    subfolder = fieldSubfolderMap[file.fieldname] || 'otros'; // 'otros' como fallback
+    subfolder = fieldSubfolderMap[file.fieldname] || 'otros';
 
+    // Asegúrate que la ruta base sea correcta para los productos
     const uploadPath = path.join('uploads', 'productos', subfolder);
     ensureDirectoryExistence(uploadPath);
 
-    // Guardamos la ruta completa para usarla en filename si es necesario
+    // Guardamos la ruta para usarla en filename
     (file as any).uploadPath = uploadPath;
 
-    console.log(`Destino para ${file.originalname} (${file.fieldname}): ${uploadPath}`);
+    console.log(`[Uploads] Destino para ${file.originalname} (${file.fieldname}): ${uploadPath}`);
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     // 1. Sanitizar el nombre original del archivo
-    const sanitized = sanitizeFilename(file.originalname);
+    const sanitizedFilename = sanitizeFilename(file.originalname);
 
     // 2. Construir la ruta completa donde se guardaría el archivo
     const destinationPath = (file as any).uploadPath; // Obtenido de la función destination
-    const fullPath = path.join(destinationPath, sanitized);
-
-    // 3. Comprobar si el archivo ya existe (opcional, Multer sobrescribe por defecto)
-    //    Podrías añadir lógica aquí si NO quisieras sobrescribir.
-    if (fs.existsSync(fullPath)) {
-      console.log(`Archivo existente encontrado: ${fullPath}. Será sobrescrito.`);
-      // Opcional: podrías generar un nombre único si NO quieres sobrescribir:
-      // const ext = path.extname(sanitized);
-      // const baseName = path.basename(sanitized, ext);
-      // sanitized = `${baseName}-${Date.now()}${ext}`;
-    } else {
-      console.log(`Archivo no existente. Se guardará como: ${fullPath}`);
+    if (!destinationPath) {
+        // Manejo de error si uploadPath no se estableció correctamente
+        return cb(new Error('Error interno: La ruta de destino no está definida.'), '');
     }
+    const fullPath = path.join(destinationPath, sanitizedFilename);
 
-    // 4. Devolver el nombre de archivo sanitizado (sin timestamp)
-    console.log(`Nombre final para ${file.originalname}: ${sanitized}`);
-    cb(null, sanitized);
+    // --- Lógica Clave: Prevenir Guardado si ya Existe ---
+    // 3. Comprobar si ya existe un archivo con ESE nombre sanitizado en ESE destino
+    fs.access(fullPath, fs.constants.F_OK, (err) => {
+      if (!err) {
+        // ¡El archivo SÍ existe! No queremos sobrescribir.
+        console.warn(`[Uploads] Conflicto: El archivo '${sanitizedFilename}' ya existe en '${destinationPath}'. Subida cancelada para este archivo.`);
+        // Llamamos al callback con un error específico para indicar el conflicto.
+        // El controlador que usa 'uploadAssets' recibirá este error.
+        // IMPORTANTE: Pasamos un segundo argumento vacío o un nombre inválido para asegurarnos que Multer no intente usarlo.
+        // Pasar solo el error es la forma más clara según la documentación de Multer para detener el guardado desde filename.
+         cb(new Error(`UPLOAD_CONFLICT: El archivo '${sanitizedFilename}' ya existe.`), '');
+      } else {
+        // El archivo NO existe (o hubo otro error de acceso, pero F_OK solo chequea existencia). Procedemos a guardar.
+        console.log(`[Uploads] Archivo '${sanitizedFilename}' no encontrado en destino. Se guardará.`);
+        // Devolver el nombre de archivo sanitizado para que Multer lo use.
+        cb(null, sanitizedFilename);
+      }
+    });
+    // --- Fin Lógica Clave ---
   },
 });
 
@@ -106,8 +103,7 @@ const uploadAssets = multer({
   storage,
   limits,
   fileFilter: (req, file, cb) => {
-    // Opcional: Añadir filtro por tipo de archivo si es necesario
-    // Ejemplo: Permitir solo ciertas extensiones de imagen
+    // La validación de tipo de archivo sigue igual
     if (file.fieldname === 'imagenes') {
         const allowedTypes = /jpeg|jpg|png|gif|webp/;
         const mimetype = allowedTypes.test(file.mimetype);
@@ -119,17 +115,29 @@ const uploadAssets = multer({
     } else if (file.fieldname === 'modelos') {
         const allowedTypes = /gltf|glb/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-         if (extname) { // GLB no tiene un mimetype estándar universal
+         if (extname) {
             return cb(null, true);
         }
          cb(new Error(`Error: Tipo de archivo no permitido para modelos (${file.originalname})`));
-    } else {
-       // Añadir más validaciones para videos u otros tipos si es necesario
-       return cb(null, true); // Permitir otros por defecto (o añadir validación)
+    } else if (file.fieldname === 'videos') {
+        const allowedTypes = /mp4|mov|avi|webm/; // Asegúrate que estos son los que quieres
+        const mimetype = allowedTypes.test(file.mimetype);
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error(`Tipo de archivo no permitido para videos: ${file.originalname}`));
+    }
+    else {
+       // Por defecto, podrías rechazar campos no esperados
+       console.warn(`[Uploads] Campo de archivo no manejado explícitamente: ${file.fieldname}. Rechazado.`);
+       cb(null, false); // Rechazar archivo si el fieldname no coincide con los esperados
+       // O si prefieres permitir otros: cb(null, true);
     }
   }
 }).fields([
-  { name: 'imagenes', maxCount: 5 }, // Aumentado a 5 por ejemplo
+  // La definición de campos sigue igual
+  { name: 'imagenes', maxCount: 5 },
   { name: 'videos', maxCount: 2 },
   { name: 'modelos', maxCount: 2 },
 ]);
