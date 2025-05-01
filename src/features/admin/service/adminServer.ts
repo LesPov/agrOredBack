@@ -15,6 +15,7 @@ import { IndicatorModel } from '../../indicators/models/indicador';
 import { TagModel } from '../../tags/models/tagModel';
 import { ReviewModel } from '../../tags/models/reviewModel';
 import ProductModel from '../../products/models/productModel';
+import tagRouter from '../../tags/etiqueta/routes/tagRouter';
  
 dotenv.config();
 
@@ -35,6 +36,7 @@ class AdminServer {
     this.router.use(adminAccountRouter);
     this.router.use(adminProfileRouter);
     this.router.use(adminZoneRouter);
+    this.router.use(tagRouter);
 
    }
   async dbConnect() { 

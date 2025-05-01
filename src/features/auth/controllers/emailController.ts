@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { checkUserVerificationStatus } from '../../../shared/auth/emails/utils/check/checkUserVerificationStatus';
+import { checkUserVerificationStatus, handleEmailNotVerificationErroruser } from '../../../shared/auth/emails/utils/check/checkUserVerificationStatus';
 import { checkVerificationCodeExpiration, handleVerificationCodeExpirationError } from '../../../shared/auth/emails/utils/check/checkVerificationCodeExpiration';
 import { checkVerificationCodeIsValid, handleVerificationCodeIsValidError } from '../../../shared/auth/emails/utils/check/checkVerificationCodeIsvValid';
 import { handleUserNotFoundError } from '../../../shared/auth/emails/utils/errors/handleUserNotFoundError';
@@ -8,8 +8,7 @@ import { markEmailAsVerified, removeVerificationCode } from '../../../shared/aut
 import { handleServerError } from '../../../shared/auth/register/utils/invalidations/handleServerError';
 import { successMessages } from '../../../shared/auth/succes/successMessages';
 import { sendPhoneRegistrationEmail } from '../../../shared/auth/emails/utils/sendPhoneVerificationEmail';
-import { handleEmailNotVerificationErroruser } from '../../../shared/auth/phone/utils/check/checkUserVerificationStatus';
- 
+  
 
 
 export const verifyUser = async (req: Request, res: Response) => {

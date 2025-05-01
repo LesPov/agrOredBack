@@ -15,7 +15,7 @@ dotenv.config();
 export const sendPhoneRegistrationEmail = async (email: string, username: string): Promise<boolean> => {
   try {
     // Ruta de la plantilla del correo para el registro del número de teléfono.
-    const templatePath = path.join(__dirname, '..', '..', '..', '..', '..', 'templates' ,'emailtemplates', 'email', 'phoneRegistrationEmail.html');
+    const templatePath = path.join(__dirname, '..', '..', '..', '..', 'shadred', 'templates' ,'emailtemplates', 'email', 'phoneRegistrationEmail.html');
     console.log('Ruta de plantilla para registro de teléfono:', templatePath);
 
     // Lee la plantilla HTML del correo.
