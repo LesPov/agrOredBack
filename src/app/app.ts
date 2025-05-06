@@ -1,6 +1,6 @@
 
 import dotenv from 'dotenv';
- import whatsappClient from '../infrastructure/chatbot/chatbot.client'; // Importa el bot desde el archivo separado
+import whatsappClient from '../infrastructure/chatbot/chatbot.client'; // Importa el bot desde el archivo separado
 import Server from './server';
 
 // Configurar las variables de entorno del archivo .env
@@ -11,4 +11,3 @@ dotenv.config();
 const server = new Server();
 
 
- 
