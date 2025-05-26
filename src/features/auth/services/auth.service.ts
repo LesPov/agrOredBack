@@ -15,7 +15,7 @@ class AuthService {
     constructor() {
         this.router = Router();
         this.routes();
-        this.dbConnect();
+        this.dbConnect(); 
 
     }
  
@@ -30,7 +30,6 @@ class AuthService {
         try {
             await AuthModel.sync();
             await VerificationModel.sync();
-            // await Country.sync();
 
             console.log('Modelos  sincronizados correctamente.');
         } catch (error) {

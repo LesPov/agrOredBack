@@ -38,11 +38,15 @@ class Server {
     // 1. Compresión general de respuestas
     this.app.use(compression());
 
-    // 2. Configuración Centralizada de CORS
-    this.configureCors();
 
-    // 3. Middlewares de parseo y estáticos
-    this.middlewares();
+    // Trust proxy antes de CORS
+    this.configureTrustProxy();
+
+    // CORS y middlewares
+    this.configureCors();
+    this.configureMiddlewares();
+
+
 
     // 4. Definición de rutas
     this.routes();
@@ -50,53 +54,78 @@ class Server {
     // 5. Inicio del servidor
     this.listen();
   }
+  /**
+     * Configura Express para que confíe en los encabezados del proxy.
+     * Esencial para que req.protocol y req.get('host') funcionen correctamente detrás de un proxy.
+     */
+  private configureTrustProxy(): void {
+    // '1' significa que confía en el primer proxy en la cadena (ej. tu Dev Tunnel).
+    this.app.set('trust proxy', 1);
+    console.log("[Server] Express 'trust proxy' configurado como 1.");
+  }
 
   /** Configura CORS de forma centralizada con soporte de comodines en dev */
   private configureCors(): void {
-    const raw = process.env.ALLOWED_ORIGINS || '';
-    const allowed = raw.split(',').map(o => o.trim());
+    const rawOrigins = process.env.ALLOWED_ORIGINS || '';
+    const allowedOrigins = rawOrigins.split(',').map(o => o.trim()).filter(o => o); // Filtra vacíos
 
+    console.log("[Server] Orígenes permitidos para CORS:", allowedOrigins);
 
     const corsOptions: CorsOptions = {
       origin: (origin, callback) => {
+        // Permitir solicitudes sin 'origin' (como Postman o curl en algunos casos)
         if (!origin) return callback(null, true);
-        const match = allowed.some(pattern => {
-          if (pattern === '*') return true;
-          if (pattern.includes('*')) {
-            const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+
+        // Si no hay orígenes configurados, permitir todo (considerar seguridad en producción)
+        if (allowedOrigins.length === 0) return callback(null, true);
+
+        const isAllowed = allowedOrigins.some(pattern => {
+          if (pattern === '*') return true; // Comodín general
+          if (pattern.startsWith('*.')) { // Comodín de subdominio
+            const domain = pattern.substring(2);
+            const regex = new RegExp(`^(https?:\/\/)?([a-zA-Z0-9-]+\.)*${domain.replace('.', '\\.')}$`);
             return regex.test(origin);
           }
+          // Coincidencia exacta (incluyendo protocolo si está en el patrón)
           return origin === pattern;
         });
-        if (match) return callback(null, true);
-        console.warn(`[CORS] Origen no permitido: ${origin}`);
-        callback(new Error('No permitido por CORS'));
+
+        if (isAllowed) {
+          return callback(null, true);
+        } else {
+          console.warn(`[CORS] Origen no permitido: ${origin}`);
+          return callback(new Error('No permitido por CORS'));
+        }
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-      optionsSuccessStatus: 200
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+      optionsSuccessStatus: 200 // Para navegadores antiguos que pueden tener problemas con 204
     };
-    
-
     this.app.use(cors(corsOptions));
+    console.log("[Server] CORS configurado.");
   }
 
-  /** Middlewares globales: JSON, URL-encoded y estáticos con cache */
-  private middlewares(): void {
-    // Parseo body
-    this.app.use(express.json({ limit: '100mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+  /** Middlewares globales: JSON, URL-encoded y estáticos */
+  private configureMiddlewares(): void {
+    // Parseo de body JSON y URL-encoded con límite
+    this.app.use(express.json({ limit: process.env.BODY_LIMIT || '50mb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: process.env.BODY_LIMIT || '50mb' }));
+    console.log(`[Server] Middlewares de parseo de body configurados con límite: ${process.env.BODY_LIMIT || '50mb'}`);
 
-    // Servir uploads con caching y rutas absolutas
+    // Servir archivos estáticos desde la carpeta 'uploads' en la raíz del proyecto
+    // La ruta /uploads en la URL mapeará a la carpeta PROJECT_ROOT/uploads
     const uploadsPath = path.resolve(process.cwd(), 'uploads');
     this.app.use(
-      '/uploads',
+      '/uploads', // La URL base para acceder a estos archivos
       express.static(uploadsPath, {
-        etag: true,
+        etag: true, // Habilita ETags para caching del navegador
+        // maxAge: '1d' // Opcional: Cachear por 1 día
       })
     );
+    console.log(`[Server] Sirviendo archivos estáticos desde ${uploadsPath} en la ruta /uploads`);
   }
+
 
   /** Define las rutas de la aplicación */
   private routes(): void {

@@ -8,7 +8,7 @@ import sequelize from "../../../infrastructure/database/connection";
  * Este modelo representa la tabla `verification` en la base de datos, la cual almacena
  * la información de verificación relacionada con un usuario, incluyendo la verificación de correo,
  * intentos de inicio de sesión, y otros datos de seguridad.
- * 
+ *  
  * @model VerificationModel
  * @interface VerificationInterface
  */

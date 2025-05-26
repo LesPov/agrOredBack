@@ -20,7 +20,7 @@ import tagRouter from '../../tags/etiqueta/routes/tagRouter';
 dotenv.config();
 
 class AdminServer {
-    private router: Router;
+    private router: Router; 
     constructor() {
         this.router = Router();
         this.routes();

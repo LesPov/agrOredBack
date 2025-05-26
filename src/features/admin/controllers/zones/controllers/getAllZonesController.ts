@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { ZoneModel } from '../../../../zones/models/zoneModel';
 import { userProfileModel } from '../../../../profiles/models/userProfileModel';
- 
+
 export const getAllZonesController = async (req: Request, res: Response): Promise<void> => {
   try {
     const { climate, departamentoName, tipoZona, description } = req.query;
@@ -35,10 +35,10 @@ export const getAllZonesController = async (req: Request, res: Response): Promis
         'zoneImage',
         'video',      // video de la zona
         'modelPath',  // modelo de la zona (puedes usar otro nombre si en tu BD es distinto)
-        'titleGlb' ,   // opcional: título o modelo adicional
-        'elevation' ,
-        'temperature', 
-        'about' 
+        'titleGlb',   // opcional: título o modelo adicional
+        'elevation',
+        'temperature',
+        'about'
       ],
       include: [{
         model: userProfileModel,
