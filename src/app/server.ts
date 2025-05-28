@@ -130,15 +130,14 @@ class Server {
   /** Define las rutas de la aplicación */
   private routes(): void {
     this.app.use('/auth/user', this.authService.getRouter());
-    this.app.use('/user/profile', this.profileServer.getRouter());
-    this.app.use('/user/admin', this.adminServer.getRouter());
-    this.app.use('/auth/user/updateStatus', updateStatusRouter);
+     this.app.use('/auth/user/updateStatus', updateStatusRouter);
     this.app.use(this.userService.getRouter());
     this.app.use(this.campiAmigoService.getRouter());
     // Ruta de prueba para verificar CORS
     this.app.get('/test-cors', (_req: Request, res: Response) => {
       res.json({ msg: 'CORS funciona correctamente' });
     });
+    this.app.use(this.profileServer.getRouter());
   }
 
   /** Inicia el servidor en el puerto configurado */

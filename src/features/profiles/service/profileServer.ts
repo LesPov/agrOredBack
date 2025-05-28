@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express, { Application, Router } from 'express';
  import cors from 'cors';
 import { userProfileModel } from '../models/userProfileModel';
+import registerPersonalData from '../routes/ProfileRoutes';
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ class ProfileServer {
 
        routes(): void { 
         console.log('[AuthService] Montando sub-routers...');
-        //   this.router.use(authRouter);
+        this.router.use('/user/profile', registerPersonalData); 
  
 
     } 

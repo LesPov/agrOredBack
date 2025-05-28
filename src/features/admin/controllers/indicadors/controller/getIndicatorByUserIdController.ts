@@ -6,7 +6,7 @@ import { userProfileModel } from '../../../../profiles/models/userProfileModel';
 import { ZoneModel } from '../../../../zones/models/zoneModel';
 import ProductModel from '../../../../products/models/productModel';
 import { TagModel } from '../../../../tags/models/tagModel';
- 
+
 export const getIndicatorByUserIdController = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;  // id es userProfile.id
@@ -14,35 +14,40 @@ export const getIndicatorByUserIdController = async (req: Request, res: Response
     const indicator = await IndicatorModel.findOne({
       where: { userId: id },
       attributes: [
-        'id','zoneId','userId','updatedBy','color',
-        'x','y','z','createdAt','updatedAt'
+        'id', 'zoneId', 'userId', 'updatedBy', 'color',
+        'x', 'y', 'z', 'createdAt', 'updatedAt'
       ],
       include: [
         // 1. Zona
-        { 
+        {
           model: ZoneModel,
-          attributes: ['id','name','tipoZona','zoneImage']
+          attributes: [
+            'id', 'name', 'tipoZona', 'zoneImage',
+            'departamentoName', // <-- Nuevo campo
+            'climate',        // <-- Nuevo campo
+            'about'           // <-- Nuevo campo
+          ]
         },
         // 2. Perfil de usuario
         {
           model: userProfileModel,
           attributes: [
-            'id','userId','profilePicture','firstName','lastName',
-            'identificationType','identificationNumber','biography',
-            'direccion','birthDate','gender','status','campiamigo',
-            'zoneId','createdAt','updatedAt'
+            'id', 'userId', 'profilePicture', 'firstName', 'lastName',
+            'identificationType', 'identificationNumber', 'biography',
+            'direccion', 'birthDate', 'gender', 'status', 'campiamigo',
+            'zoneId', 'createdAt', 'updatedAt'
           ],
           include: [
             // 2.1 Datos de autenticación
             {
               model: AuthModel,
               as: 'auth',                   // Alias para que JSON venga en userProfile.auth
-              attributes: ['id','username','email','phoneNumber'],
+              attributes: ['id', 'username', 'email', 'phoneNumber', 'status'], // <--- ¡AQUÍ ESTÁ EL CAMBIO CLAVE!
               include: [
                 {
                   model: ProductModel,
                   as: 'products',           // Alias definido en la relación
-                  attributes: ['id','name','description','price','image','glbFile','video']
+                  attributes: ['id', 'name', 'description', 'price', 'image', 'glbFile', 'video']
                 }
               ]
             },
@@ -50,7 +55,7 @@ export const getIndicatorByUserIdController = async (req: Request, res: Response
             {
               model: TagModel,
               as: 'tags',                   // Alias definido en userProfileModel.hasMany()
-              attributes: ['id','name','color','createdAt','updatedAt'],
+              attributes: ['id', 'name', 'color', 'createdAt', 'updatedAt'],
               required: false               // Si no hay etiquetas, igual devuelve el perfil
             }
           ]
@@ -66,9 +71,9 @@ export const getIndicatorByUserIdController = async (req: Request, res: Response
     res.status(200).json({ msg: 'Indicador recuperado correctamente.', indicator });
   } catch (error: any) {
     console.error('Error al recuperar el indicador:', error);
-    res.status(500).json({ 
-      msg: 'Error del servidor al obtener el indicador.', 
-      error: error.message 
+    res.status(500).json({
+      msg: 'Error del servidor al obtener el indicador.',
+      error: error.message
     });
   }
 };
