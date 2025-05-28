@@ -138,6 +138,10 @@ class Server {
       res.json({ msg: 'CORS funciona correctamente' });
     });
     this.app.use(this.profileServer.getRouter());
+    this.app.use(this.adminServer.getRouter());
+    this.app.use(this.userService.getRouter());
+    this.app.use(this.campiAmigoService.getRouter());
+     
   }
 
   /** Inicia el servidor en el puerto configurado */
