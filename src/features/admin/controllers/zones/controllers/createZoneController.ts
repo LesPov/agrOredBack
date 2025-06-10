@@ -53,7 +53,7 @@ export const createZoneController = async (req: Request, res: Response): Promise
       // --- EXTRAER LOS NUEVOS CAMPOS DEL BODY ---
       const {
         name,
-        tipoZona,
+        tipoZona, 
         description,
         climate,
         departamentoName,

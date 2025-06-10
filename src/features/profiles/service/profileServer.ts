@@ -1,29 +1,29 @@
 import dotenv from 'dotenv';
 import express, { Application, Router } from 'express';
- import cors from 'cors';
+import cors from 'cors';
 import { userProfileModel } from '../models/userProfileModel';
 import registerPersonalData from '../routes/ProfileRoutes';
 
 dotenv.config();
 
 class ProfileServer {
-      private router: Router;
-       constructor() {
-           this.router = Router();
-           this.routes();
-           this.dbConnect();
-   
-       }
+    private router: Router;
+    constructor() {
+        this.router = Router();
+        this.routes();
+        this.dbConnect();
 
-       routes(): void { 
+    }
+
+    routes(): void {
         console.log('[AuthService] Montando sub-routers...');
         this.router.use('/user/profile', registerPersonalData); 
- 
 
-    } 
-   
 
-    async dbConnect() { 
+    }
+
+
+    async dbConnect() {
         try {
             await userProfileModel.sync();
 

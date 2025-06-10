@@ -16,44 +16,43 @@ import { TagModel } from '../../tags/models/tagModel';
 import { ReviewModel } from '../../tags/models/reviewModel';
 import ProductModel from '../../products/models/productModel';
 import tagRouter from '../../tags/etiqueta/routes/tagRouter';
- 
+
 dotenv.config();
 
 class AdminServer {
-    private router: Router; 
-    constructor() {
-        this.router = Router();
-        this.routes();
-        this.dbConnect();
+  private router: Router;
+  constructor() {
+    this.router = Router();
+    this.routes();
+    this.dbConnect();
 
-    }
+  }
 
   routes(): void {
-    console.log('[AdminServer] Montando sub-routers...');
-    this.router.use(productosRouter);  
+
+    this.router.use(productosRouter);
 
     this.router.use(adminRouter);
-    this.router.use(adminAccountRouter);
+    this.router.use(adminAccountRouter); 
     this.router.use(adminProfileRouter);
     this.router.use(adminZoneRouter);
     this.router.use(tagRouter);
 
-   }
-  async dbConnect() { 
-          try {
-            await ProductModel.sync();
-            await ZoneModel.sync();
-            await Country.sync();
-            await IndicatorModel.sync();
-            await TagModel.sync();
-            await ReviewModel.sync();
+  }
+  async dbConnect() {
+    try {
+      await ProductModel.sync();
+      await ZoneModel.sync();
+      await Country.sync();
+      await IndicatorModel.sync();
+      await TagModel.sync();
+      await ReviewModel.sync();
 
-              console.log('Modelos de denuncias sincronizados correctamente.');
-          } catch (error) {
-              console.error('Error al sincronizar los modelos de denuncias:', error);
-          }
-      }
+      console.log('Modelos de denuncias sincronizados correctamente.');
+    } catch (error) {
+      console.error('Error al sincronizar los modelos de denuncias:', error);
+    }
+  }
   getRouter(): Router { return this.router; }
 }
 export default AdminServer;
-  
