@@ -1,75 +1,101 @@
-import { Request, Response } from 'express';
-import multer from 'multer'; // Necesario para instanceof multer.MulterError
-// --- IMPORTA 'uploadZone' (default) Y 'limits' (nombrada) ---
-import uploadZone, { limits } from '../../../../../infrastructure/uploadsfiles/uploadZoneConfig';
-import { ZoneModel } from '../../../../zones/models/zoneModel'; // Ajusta la ruta si es necesario
+/**
+ * @file createZoneController.ts
+ * @description Controlador para la creación de una nueva zona geográfica, adaptado al modelo de datos jerárquico.
+ */
 
-// La función auxiliar para manejar la subida
-const handleZoneImageUpload = (req: Request, res: Response, callback: () => Promise<void>): void => {
-  console.log(`[handleZoneImageUpload] Recibida petición para ${req.method} ${req.originalUrl}. Intentando procesar con Multer...`);
+import { Request, Response } from 'express';
+import multer from 'multer';
+// Importamos la configuración de Multer para manejar la subida de archivos y los límites.
+import uploadZone, { limits } from '../../../../../infrastructure/uploadsfiles/uploadZoneConfig';
+// Importamos el nuevo modelo de Zona.
+import { ZoneModel } from '../../../../zones/models/zoneModel';
+
+/**
+ * Función de ayuda (Wrapper) que primero procesa la subida de archivos con Multer
+ * y luego ejecuta la lógica principal del controlador.
+ * Esta estructura separa la gestión de archivos de la lógica de negocio.
+ * @param req - Objeto de solicitud de Express.
+ * @param res - Objeto de respuesta de Express.
+ * @param callback - La función del controlador principal a ejecutar después de que Multer termine.
+ */
+const handleZoneFileUpload = (req: Request, res: Response, callback: () => Promise<void>): void => {
   uploadZone(req, res, (err: any) => {
-    // Manejo de errores de Multer
+    // 1. Manejo de errores específicos de Multer.
     if (err) {
       console.error("[Multer Error] Error durante la subida de archivos:", err);
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          // --- AHORA 'limits' SÍ ESTÁ DISPONIBLE ---
-          return res.status(413).json({ // 413 Payload Too Large
-            msg: `Error: El archivo subido excede el límite de ${limits.fileSize / (1024 * 1024)} MB.`,
+          return res.status(413).json({
+            msg: `Error: El archivo es demasiado grande. El límite es de ${limits.fileSize / (1024 * 1024)} MB.`,
             code: err.code
           });
         }
-        // Otros errores conocidos de Multer (ej. demasiados archivos, campo inesperado)
-        return res.status(400).json({ // 400 Bad Request
+        return res.status(400).json({
           msg: `Error de Multer: ${err.message}`,
           code: err.code
         });
       }
-      // Otros errores inesperados durante la fase de subida (ej. problemas de disco)
-      return res.status(500).json({ // 500 Internal Server Error
-        msg: `Error inesperado durante la configuración de la subida: ${err.message}`
+      // 2. Manejo de otros errores inesperados durante la subida.
+      return res.status(500).json({
+        msg: `Error inesperado durante la subida del archivo: ${err.message}`
       });
     }
 
-    // Verificar si se subieron archivos (req.files podría estar vacío si no se envió nada)
-    if (!req.files || Object.keys(req.files).length === 0) {
-       // Podrías decidir si esto es un error o no. Si algunos archivos son opcionales, quizás no lo sea.
-       // console.warn("[handleZoneImageUpload] No se subieron archivos.");
-    } else {
-        console.log("[handleZoneImageUpload] Archivos procesados por Multer:", Object.keys(req.files));
-    }
-
-
-    // Si Multer no dio error, ejecutar el callback principal del controlador
-    console.log("[handleZoneImageUpload] Multer procesó la petición sin errores aparentes. Ejecutando callback del controlador...");
+    // 3. Si Multer se ejecuta sin errores, llamamos a la lógica principal del controlador.
     callback();
   });
 };
 
-
+/**
+ * Controlador para crear una nueva Zona.
+ * Se encarga de validar los datos de entrada, comprobar duplicados, procesar
+ * archivos subidos y finalmente, crear el registro en la base de datos.
+ * @param req - La solicitud de Express, que contiene los datos de la zona en `req.body` y los archivos en `req.files`.
+ * @param res - La respuesta de Express.
+ */
 export const createZoneController = async (req: Request, res: Response): Promise<void> => {
-  handleZoneImageUpload(req, res, async (): Promise<void> => {
+  // Usamos el wrapper para que primero se gestionen los archivos.
+  handleZoneFileUpload(req, res, async (): Promise<void> => {
     try {
-      // --- EXTRAER LOS NUEVOS CAMPOS DEL BODY ---
+      // --- 1. EXTRACCIÓN Y VALIDACIÓN DE DATOS DEL BODY ---
+      // Extraemos los campos del cuerpo de la petición, adaptados al nuevo modelo.
       const {
-        name,
-        tipoZona, 
+        departamento,
+        municipio,
+        vereda, // Este es opcional
         description,
         climate,
-        departamentoName,
-        elevation,      // Nuevo
-        temperature,    // Nuevo
-        about           // Nuevo
+        elevation,
+        temperature,
+        about
       } = req.body;
 
-      // La verificación de zona existente sigue igual
-      const existingZone = await ZoneModel.findOne({ where: { name, departamentoName } });
-      if (existingZone) {
-        res.status(400).json({ msg: 'Ya existe una zona con ese nombre y departamento.' });
+      // Validación fundamental: 'departamento' y 'municipio' son obligatorios.
+      if (!departamento || !municipio) {
+        res.status(400).json({ msg: 'Los campos "departamento" y "municipio" son obligatorios.' });
         return;
       }
 
-      // La extracción de archivos sigue igual
+      // --- 2. VERIFICACIÓN DE ZONA EXISTENTE (LÓGICA ACTUALIZADA) ---
+      // Comprobamos si ya existe una zona con la misma combinación única de departamento, municipio y vereda.
+      // Sequelize manejará `vereda` como `NULL` si no se proporciona, lo que es correcto.
+      const existingZone = await ZoneModel.findOne({
+        where: {
+          departamento,
+          municipio,
+          vereda: vereda || null // Aseguramos que se compare con NULL si 'vereda' viene vacío o undefined.
+        }
+      });
+
+      if (existingZone) {
+        res.status(409).json({ // 409 Conflict es más semántico para un recurso que ya existe.
+          msg: `Ya existe una zona con la combinación: Departamento='${departamento}', Municipio='${municipio}'` + (vereda ? `, Vereda='${vereda}'` : '.')
+        });
+        return;
+      }
+
+      // --- 3. EXTRACCIÓN DE RUTAS DE ARCHIVOS (LÓGICA SIN CAMBIOS) ---
+      // Accedemos a los archivos procesados por Multer.
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       const cityImage = files?.cityImage ? files.cityImage[0].filename : undefined;
       const zoneImage = files?.zoneImage ? files.zoneImage[0].filename : undefined;
@@ -77,40 +103,45 @@ export const createZoneController = async (req: Request, res: Response): Promise
       const modelPath = files?.modelPath ? files.modelPath[0].filename : undefined;
       const titleGlb = files?.titleGlb ? files.titleGlb[0].filename : undefined;
 
-      // --- AÑADIR LOS NUEVOS CAMPOS AL CREAR LA ZONA ---
+      // --- 4. CREACIÓN DE LA NUEVA ZONA EN LA BASE DE DATOS ---
+      // Creamos la nueva instancia en la tabla 'zone' con todos los datos validados y procesados.
       const newZone = await ZoneModel.create({
-        name,
-        tipoZona,
+        departamento,
+        municipio,
+        vereda,
         description,
         climate,
-        departamentoName,
         cityImage,
         zoneImage,
         video,
         modelPath,
         titleGlb,
-        elevation,      // Añadido
-        temperature,    // Añadido
-        about           // Añadido
+        elevation,
+        temperature,
+        about
       });
 
-      // La respuesta sigue igual
+      // --- 5. RESPUESTA DE ÉXITO ---
+      // Respondemos con un estado 201 (Creado) y la información de la nueva zona.
       res.status(201).json({
         msg: 'Zona creada correctamente.',
         zone: newZone,
       });
+
     } catch (error: any) {
-      // El manejo de errores sigue igual
-      console.error('Error en createZoneController:', error);
+      // --- 6. MANEJO DE ERRORES DE BASE DE DATOS ---
+      console.error('Error en la lógica de createZoneController:', error);
+      // Capturamos el error específico de la restricción de unicidad de Sequelize.
       if (error.name === 'SequelizeUniqueConstraintError') {
-        res.status(400).json({
-          msg: 'La combinación de nombre de zona y departamento ya existe.',
+        res.status(409).json({ // 409 Conflict
+          msg: 'La combinación de departamento, municipio y vereda ya existe. Conflicto de datos.',
           error: error.message,
         });
         return;
       }
+      // Para cualquier otro error, devolvemos un error 500 (Error Interno del Servidor).
       res.status(500).json({
-        msg: 'Error al crear la zona.',
+        msg: 'Error interno del servidor al intentar crear la zona.',
         error: error.message,
       });
     }

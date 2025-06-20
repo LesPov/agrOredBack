@@ -33,11 +33,11 @@ class AdminServer {
     this.router.use(productosRouter);
 
     this.router.use(adminRouter);
-    this.router.use(adminAccountRouter); 
+    this.router.use(adminAccountRouter);
     this.router.use(adminProfileRouter);
     this.router.use(adminZoneRouter);
     this.router.use(tagRouter);
-
+ 
   }
   async dbConnect() {
     try {
