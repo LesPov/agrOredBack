@@ -29,7 +29,7 @@ class AdminServer {
   }
 
   routes(): void {
-
+ 
     this.router.use(productosRouter);
 
     this.router.use(adminRouter);
@@ -43,7 +43,7 @@ class AdminServer {
     try {
       await ProductModel.sync();
       await ZoneModel.sync();
-      await Country.sync();
+      await Country.sync(); 
       await IndicatorModel.sync();
       await TagModel.sync();
       await ReviewModel.sync();

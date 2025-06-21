@@ -37,9 +37,9 @@ export const getAllProductsController = async (req: Request, res: Response): Pro
                   model: ZoneModel,
                   attributes: [
                     'id',
-                    'name',
-                    'departamentoName',
-                    'tipoZona',
+                    'municipio',
+                    'vereda',
+                    'departamento',
                     'climate',
                     'cityImage',
                     'zoneImage'
